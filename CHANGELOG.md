@@ -15,6 +15,7 @@ x.x.x Release notes (yyyy-MM-dd)
 
 ### Internal
 * Adding use of [ccache](https://ccache.dev/) in build scripts, XCode projects and the integration tests GHA workflow.
+* Removed unneeded files from the archive.
 * <Either mention core version or upgrade>
 * <Using Realm Core vX.Y.Z>
 * <Upgraded Realm Core from vX.Y.Z to vA.B.C>
