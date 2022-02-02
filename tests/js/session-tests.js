@@ -1153,6 +1153,225 @@ module.exports = {
     const partition = Utils.genPartition();
 
     /*
+        Test 1:  check whether calls to `writeCopyTo` are allowed at the right times
+      */
+    let user1 = await app.logIn(credentials1);
+    const config1 = {
+      sync: {
+        user: user1,
+        partitionValue: partition,
+        _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
+      },
+      schema: [schemas.PersonForSync, schemas.DogForSync],
+    };
+    const realm1 = await Realm.open(config1);
+    const realm1Path = realm1.path;
+
+    realm1.write(() => {
+      for (let i = 0; i < 25; i++) {
+        realm1.create("Person", {
+          _id: new ObjectId(),
+          age: i,
+          firstName: "John",
+          lastName: "Smith",
+        });
+      }
+    });
+
+    await realm1.syncSession.uploadAllLocalChanges();
+    await realm1.syncSession.downloadAllServerChanges();
+
+    // changes are synced -- we should be able to copy the realm
+    realm1.writeCopyTo(realm1Path + "copy1.realm");
+
+    // log out the user that created the realm
+    await user1.logOut();
+
+    // add another 25 people
+    realm1.write(() => {
+      for (let i = 0; i < 25; i++) {
+        realm1.create("Person", {
+          _id: new ObjectId(),
+          age: i,
+          firstName: "John",
+          lastName: "Smith",
+        });
+      }
+    });
+
+    // we haven't uploaded our recent changes -- we're not allowed to copy
+    TestCase.assertThrowsContaining(() => {
+      realm1.writeCopyTo(realm1Path + "copy2.realm");
+    }, "Could not write file as not all client changes are integrated in server");
+
+    // log back in and upload the changes we made locally
+    user1 = await app.logIn(credentials1);
+    await realm1.syncSession.uploadAllLocalChanges();
+
+    // create copy no. 2 of the realm
+    const realm2Path = realm1Path + "copy2.realm";
+    realm1.writeCopyTo(realm2Path);
+
+    /*
+        Test 2:  check that a copied realm can be opened by another user, and that
+          the contents of the original realm and the copy are as expected
+      */
+    // log in a new user, open the realm copy we created just above
+    const user2 = await app.logIn(credentials2);
+    const config2 = {
+      sync: {
+        user: user2,
+        partitionValue: partition,
+        _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
+      },
+      schema: [schemas.PersonForSync, schemas.DogForSync],
+      path: realm2Path,
+    };
+
+    const realm2 = await Realm.open(config2);
+
+    let realm1Persons = realm1.objects("Person");
+    let realm2Persons = realm2.objects("Person");
+    TestCase.assertEqual(
+      // the contents of the two realm should be the same
+      realm1Persons.length,
+      realm2Persons.length,
+      "The same number of people should be in the two realms",
+    );
+
+    // add another 25 people locally to the original realm
+    realm1.syncSession.pause();
+    realm1.write(() => {
+      for (let i = 0; i < 25; i++) {
+        realm1.create("Person", {
+          _id: new ObjectId(),
+          age: i,
+          firstName: "John",
+          lastName: "Smith",
+        });
+      }
+    });
+
+    realm1Persons = realm1.objects("Person");
+    realm2Persons = realm2.objects("Person");
+    TestCase.assertTrue(
+      // realm1 and realm2 should no longer be the same
+      realm1Persons.length == realm2Persons.length + 25,
+      "realm1 should have an additional 25 people",
+    );
+    realm1.syncSession.resume();
+
+    await realm1.syncSession.uploadAllLocalChanges();
+    await realm1.syncSession.downloadAllServerChanges();
+
+    await user2.logOut();
+    realm2.close();
+    Realm.deleteFile(config2);
+    const realm3Path = realm1Path + "copy3.realm";
+    realm1.writeCopyTo(realm3Path);
+
+    /*
+      Test 3:  open a copy of our realm with a new user and a new
+        partition key.  We expect it to fail because of the mismatch
+        in partition keys
+    */
+    const user3 = await app.logIn(credentials3);
+    const otherPartition = Utils.genPartition();
+    const config3 = {
+      sync: {
+        user: user3,
+        partitionValue: otherPartition,
+        _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
+      },
+      schema: [schemas.PersonForSync, schemas.DogForSync],
+      path: realm3Path,
+    };
+
+    let realm3;
+    TestCase.assertThrowsAsyncContaining(async () => {
+      realm3 = await Realm.open(config3);
+    }, "Bad server version");
+
+    TestCase.assertUndefined(realm3);
+
+    realm1.close();
+  },
+
+  testRealmConversion: async function () {
+    const appConfig = AppConfig.integrationAppConfig;
+    let app = new Realm.App(appConfig);
+    let credentials = Realm.Credentials.anonymous();
+    let user = await app.logIn(credentials);
+
+    // local realm that we will put a few dogs into
+    const configLocal = {
+      schema: [schemas.PersonForSync, schemas.DogForSync],
+      path: "forSync.realm",
+    };
+    // a copy of the local realm -- still local
+    const configLocalCopy = {
+      schema: configLocal.schema,
+    };
+
+    // create five dogs in our local realm
+    const realmLocal = await Realm.open(configLocal);
+    realmLocal.write(() => {
+      for (let i = 0; i < 5; i++) {
+        realmLocal.create("Dog", {
+          _id: new ObjectId(),
+          breed: "breed",
+          name: "Brutus",
+          realm_id: "foo",
+        });
+      }
+    });
+
+    configLocalCopy.path = `${realmLocal.path}.copy.realm`;
+
+    /*  
+        Test 1:  invoke `writeCopyTo` with a Realm configuration rather than
+          explicit parameters.  Local -> local realm.
+    */
+    realmLocal.writeCopyTo(configLocalCopy);
+    const realmLocalCopy = await Realm.open(configLocalCopy);
+
+    /*  Test 2:  invoke `writeCopyTo` with a Realm configuration rather than
+          explicit parameters.  Local -> synced realm.
+    */
+    const loggedInUser = await app.logIn(credentials);
+    const configSync = {
+      path: `${realmLocal.path}.sync_copy.realm`,
+      sync: {
+        user: loggedInUser,
+        partitionValue: "foo",
+        _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
+      },
+      schema: [schemas.DogForSync],
+    };
+
+    // create a copy of our realm that now has sync enabled
+    realmLocal.writeCopyTo(configSync);
+    const realmSynced = await Realm.open(configSync);
+    TestCase.assertDefined(realmSynced.syncSession);
+    await realmSynced.syncSession.uploadAllLocalChanges();
+    await realmSynced.syncSession.downloadAllServerChanges();
+
+    realmSynced.close();
+    realmLocalCopy.close();
+    realmLocal.close();
+  },
+
+  /*
+    Test the functionality of the writeCopyTo() operation on synced realms.
+  */
+  testSyncWriteCopyTo2: async function () {
+    let app = new Realm.App(appConfig);
+    const credentials1 = await Utils.getRegisteredEmailPassCredentials(app);
+    const credentials2 = await Utils.getRegisteredEmailPassCredentials(app);
+    const credentials3 = await Utils.getRegisteredEmailPassCredentials(app);
+    const partition = Utils.genPartition();
+
+    /*
       Test 1:  check whether calls to `writeCopyTo` are allowed at the right times
     */
     let user1 = await app.logIn(credentials1);

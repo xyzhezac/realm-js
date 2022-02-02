@@ -321,6 +321,19 @@ class Realm {
   writeCopyTo(path, encryptionKey) {}
 
   /**
+   * Writes a compacted copy of the Realm with the given configuration.
+   *
+   * The destination file cannot already exist.
+   * All conversions between synced and non-synced Realms are supported, and will be
+   * performed according to the `config` parameter, which describes the desired output.
+   *
+   * Note that if this method is called from within a write transaction, the current data is written,
+   * not the data from the point when the previous write transaction was committed.
+   * @param {Realm~Configuration} config Realm configuration that describes the output realm.
+   */
+  writeCopyTo(config) {}
+
+  /**
    * Get the current schema version of the Realm at the given path.
    * @param {string} path - The path to the file where the
    *   Realm database is stored.
