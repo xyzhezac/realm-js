@@ -307,7 +307,6 @@ class Realm {
   compact() {}
 
   /**
-   * configuration.
    * Writes a compacted copy of the Realm α) to the given path or β) with the given output
    *
    * For invocation with α):

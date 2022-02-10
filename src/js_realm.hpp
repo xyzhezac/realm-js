@@ -1527,8 +1527,6 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
 
         realm->export_to(config);
     }
-
-    return;
 }
 
 template <typename T>
