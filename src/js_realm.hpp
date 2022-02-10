@@ -29,7 +29,6 @@
 #include "js_schema.hpp"
 #include "js_observable.hpp"
 #include "platform.hpp"
-#include <stdexcept>
 
 #if REALM_ENABLE_SYNC
 #include "js_sync.hpp"
@@ -338,7 +337,6 @@ public:
     static void remove_all_listeners(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void close(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void compact(ContextType, ObjectType, Arguments&, ReturnValue&);
-    //    static void writeCopyTo(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void writeCopyTo(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void delete_model(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void object_for_object_id(ContextType, ObjectType, Arguments&, ReturnValue&);
@@ -418,7 +416,6 @@ public:
         {"close", wrap<close>},
         {"compact", wrap<compact>},
         {"writeCopyTo", wrap<writeCopyTo>},
-        //        {"writeCopyTo2", wrap<writeCopyTo2>},
         {"deleteModel", wrap<delete_model>},
         {"_updateSchema", wrap<update_schema>},
         {"_schemaName", wrap<get_schema_name_from_object>},
