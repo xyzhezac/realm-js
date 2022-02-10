@@ -307,31 +307,26 @@ class Realm {
   compact() {}
 
   /**
-   * Writes a compacted copy of the Realm to the given path.
+   * configuration.
+   * Writes a compacted copy of the Realm α) to the given path or β) with the given output
+   *
+   * For invocation with α):
+   *   * Input Realms may be local or synced, encrypted or non-encrypted
+   *   * Output Realms will be local only, encrypted or non-encrypted
+   *
+   * For invocation with β):
+   *   * Input Realms may be local or synced, encrypted or non-encrypted
+   *   * Output Realms will be local or synced, encrypted or non-encrypted, depending on the configuration passed to the function
    *
    * The destination file cannot already exist.
-   * When invoked on a synced realm, a copy of the realm is created that any user can open and
-   * resume synchronization with the server.
    *
    * Note that if this method is called from within a write transaction, the current data is written,
    * not the data from the point when the previous write transaction was committed.
-   * @param {string} path path to save the Realm to.
-   * @param {ArrayBuffer|ArrayBufferView} [encryptionKey] - Optional 64-byte encryption key to encrypt the new file with.
+   * @param {string|Realm~Configuration} pathOrConfig a α) path to save the Realm to, OR β) {@link Realm~Configuration | Configuration} that describes the output realm.
+   * @param {ArrayBuffer|ArrayBufferView} [encryptionKey] - Optional 64-byte encryption key to encrypt the new file with.  Must not be present when
+   * β) a {@link Realm~Configuration | Configuration} is given as first parameter.
    */
   writeCopyTo(path, encryptionKey) {}
-
-  /**
-   * Writes a compacted copy of the Realm with the given configuration.
-   *
-   * The destination file cannot already exist.
-   * All conversions between synced and non-synced Realms are supported, and will be
-   * performed according to the `config` parameter, which describes the desired output.
-   *
-   * Note that if this method is called from within a write transaction, the current data is written,
-   * not the data from the point when the previous write transaction was committed.
-   * @param {Realm~Configuration} config Realm configuration that describes the output realm.
-   */
-  writeCopyTo(config) {}
 
   /**
    * Get the current schema version of the Realm at the given path.
