@@ -338,7 +338,7 @@ public:
     static void remove_all_listeners(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void close(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void compact(ContextType, ObjectType, Arguments&, ReturnValue&);
-//    static void writeCopyTo(ContextType, ObjectType, Arguments&, ReturnValue&);
+    //    static void writeCopyTo(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void writeCopyTo(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void delete_model(ContextType, ObjectType, Arguments&, ReturnValue&);
     static void object_for_object_id(ContextType, ObjectType, Arguments&, ReturnValue&);
@@ -418,7 +418,7 @@ public:
         {"close", wrap<close>},
         {"compact", wrap<compact>},
         {"writeCopyTo", wrap<writeCopyTo>},
-//        {"writeCopyTo2", wrap<writeCopyTo2>},
+        //        {"writeCopyTo2", wrap<writeCopyTo2>},
         {"deleteModel", wrap<delete_model>},
         {"_updateSchema", wrap<update_schema>},
         {"_schemaName", wrap<get_schema_name_from_object>},
@@ -1393,23 +1393,23 @@ void RealmClass<T>::compact(ContextType ctx, ObjectType this_object, Arguments& 
  *    to another local realm, or converting a synced realm to a local realm.
  *  2) `writeCopyTo(<config: object>)`, which, in addition to the above, supports conversion of a local
  *    realm to a synced realm if the `sync` section is present in `config`.
- * 
+ *
  * @param ctx JS enviroment context
  * @param this_object Realm object passed from JS
  * @param args Either `<string>, [string]`, or `object` -- see function brief.
  * @param return_value none
  */
 template <typename T>
-void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Arguments &args, ReturnValue &return_value)
+void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Arguments& args, ReturnValue& return_value)
 {
     args.validate_maximum(2);
 
     enum CopyMode {
-        COPYMODE_WITHPATH       = 1,
-        COPYMODE_WITHCONFIG     = 1 << 1,
-        COPYMODE_TOSYNC         = 1 << 2,
-        COPYMODE_TOLOCAL        = 1 << 3,
-        COPYMODE_ENCRYPTED      = 1 << 4,
+        COPYMODE_WITHPATH = 1,
+        COPYMODE_WITHCONFIG = 1 << 1,
+        COPYMODE_TOSYNC = 1 << 2,
+        COPYMODE_TOLOCAL = 1 << 3,
+        COPYMODE_ENCRYPTED = 1 << 4,
     };
 
     size_t copy_mode = 0;
@@ -1423,11 +1423,11 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
     ValueType firstParamValue = args[0];
     if (Value::is_object(ctx, firstParamValue)) {
         copy_mode = COPYMODE_WITHCONFIG;
-
-    } else if (Value::is_string(ctx, firstParamValue)) {
+    }
+    else if (Value::is_string(ctx, firstParamValue)) {
         copy_mode = COPYMODE_WITHPATH;
-
-    } else {
+    }
+    else {
         throw std::runtime_error("First argument to 'writeCopyTo' must be a config Object or an output path");
     }
 
@@ -1448,9 +1448,11 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
             ValueType pathValue = Object::get_property(ctx, output_config, "path");
             if (Value::is_string(ctx, pathValue)) {
                 output_path = Value::to_string(ctx, pathValue);
-            } else if (!Value::is_valid(pathValue)) {
+            }
+            else if (!Value::is_valid(pathValue)) {
                 throw std::runtime_error("`path` property must exist in output configuration");
-            } else {
+            }
+            else {
                 throw std::runtime_error("`path` property must be a string");
             }
 
@@ -1462,7 +1464,8 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
                     copy_mode |= COPYMODE_ENCRYPTED;
                     encryption_key = Value::to_binary(ctx, encKeyValue);
                 }
-            } else {
+            }
+            else {
                 throw std::runtime_error("encryptionKey property must be a Binary");
             }
 
@@ -1470,15 +1473,16 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
             ValueType syncConfigValue = Object::get_property(ctx, output_config, "sync");
             if (Value::is_valid(syncConfigValue) && Value::is_object(ctx, syncConfigValue)) {
                 copy_mode |= COPYMODE_TOSYNC;
-            } else {
+            }
+            else {
                 copy_mode |= COPYMODE_TOLOCAL;
             }
-        }
-        break;
+        } break;
 
         case COPYMODE_WITHPATH: {
             if (args.count > 2) {
-                throw std::runtime_error("`writeCopyTo(<path>, [encryption key])` accepts no more than two parameters");
+                throw std::runtime_error(
+                    "`writeCopyTo(<path>, [encryption key])` accepts no more than two parameters");
             }
             copy_mode |= COPYMODE_TOLOCAL;
 
@@ -1486,9 +1490,12 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
             ValueType pathValue = args[0];
             if (Value::is_string(ctx, pathValue)) {
                 output_path = Value::to_string(ctx, pathValue);
-            } else if (!Value::is_valid(pathValue)) {
-                throw std::runtime_error("`path` parameter must be first parameter to `writeCopyTo(<path>, [encryption key])`");
-            } else {
+            }
+            else if (!Value::is_valid(pathValue)) {
+                throw std::runtime_error(
+                    "`path` parameter must be first parameter to `writeCopyTo(<path>, [encryption key])`");
+            }
+            else {
                 throw std::runtime_error("`path` parameter must be a string");
             }
 
@@ -1499,13 +1506,13 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
                     copy_mode |= COPYMODE_ENCRYPTED;
                     if (Value::is_binary(ctx, encKeyValue)) {
                         encryption_key = Value::to_binary(ctx, encKeyValue);
-                    } else {
+                    }
+                    else {
                         throw std::runtime_error("Encryption key for 'writeCopyTo' must be a Binary");
                     }
                 }
             }
-        }
-        break;
+        } break;
 
         default:
             // this should not happen
@@ -1514,8 +1521,8 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
 
     if (copy_mode & COPYMODE_TOLOCAL) {
         realm->write_copy(output_path, encryption_key.get());
-
-    } else if (copy_mode & COPYMODE_TOSYNC) {
+    }
+    else if (copy_mode & COPYMODE_TOSYNC) {
         realm::Realm::Config config;
         ObjectDefaultsMap defaults;
         ConstructorMap constructors;
