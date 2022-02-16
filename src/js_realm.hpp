@@ -1534,58 +1534,6 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
 
     SharedRealm realm = *get_internal<T, RealmClass<T>>(ctx, this_object);
     realm->export_to(config);
-
-
-//   // switch on the first two bits of copy_mode to parse overload of `writeCopyTo()` function from JS
-//     switch (copy_mode & (COPYMODE_WITHCONFIG | COPYMODE_WITHPATH)) {
-//         case COPYMODE_WITHPATH: {
-//             if (args.count > 2) {
-//                 throw std::runtime_error(
-//                     "`writeCopyTo(<path>, [encryption key])` accepts no more than two parameters");
-//             }
-//             copy_mode |= COPYMODE_TOLOCAL;
-
-//             // make sure that `path` parameter exists and that it is a string
-//             ValueType pathValue = args[0];
-//             if (Value::is_undefined(ctx, pathValue)) {
-//                 throw std::runtime_error(
-//                     "`path` parameter must be first parameter to `writeCopyTo(<path>, [encryption key])`");
-//             }
-//             if (!Value::is_string(ctx, pathValue)) {
-//                 throw std::runtime_error("`path` parameter must be a string");
-//             }
-
-//             output_path = Value::to_string(ctx, pathValue);
-
-//             if (args.count == 2) {
-//                 // a second parameter is given -- it must be an encryption key for the destination Realm
-//                 ValueType encKeyValue = args[1];
-//                 if (Value::is_binary(ctx, encKeyValue)) {
-//                     copy_mode |= COPYMODE_ENCRYPTED;
-//                     encryption_key = Value::to_binary(ctx, encKeyValue);
-//                 }
-//                 else {
-//                     throw std::runtime_error("Encryption key for 'writeCopyTo' must be a Binary");
-//                 }
-//             }
-//         } break;
-
-//         default:
-//             // this should not happen
-//             throw std::runtime_error("Unknown copy mode");
-//     }
-
-//     if (copy_mode & COPYMODE_TOLOCAL) {
-//         realm->write_copy(output_path, encryption_key.get());
-//     }
-//     else if (copy_mode & COPYMODE_TOSYNC) {
-//         realm::Realm::Config config;
-//         ObjectDefaultsMap defaults;
-//         ConstructorMap constructors;
-//         bool schema_updated = get_realm_config(ctx, args.count, args.value, config, defaults, constructors);
-
-//         realm->export_to(config);
-//     }
 }
 
 template <typename T>
