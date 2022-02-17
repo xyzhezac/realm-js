@@ -2055,11 +2055,11 @@ module.exports = {
 
     TestCase.assertThrowsContaining(() => {
       realm.writeCopyTo();
-    }, "`writeCopyTo` requires an output configuration or path");
+    }, "`writeCopyTo` requires <output configuration> or <path, [encryptionKey]> parameters");
 
     TestCase.assertThrowsContaining(() => {
       realm.writeCopyTo(34);
-    }, "First argument to 'writeCopyTo' must be a config Object or an output path");
+    }, "`config` parameter must be an object");
 
     // make sure that copies are in the same directory as the original file
     // that is important for running tests on mobile devices,

@@ -325,7 +325,7 @@ class Realm {
    * @param {ArrayBuffer|ArrayBufferView} [encryptionKey] - Optional 64-byte encryption key to encrypt the new file with.  Must not be present when
    * β) a {@link Realm~Configuration | Configuration} is given as first parameter.
    */
-  writeCopyTo(path, encryptionKey) {}
+  writeCopyTo(pathOrConfig, encryptionKey) {}
 
   /**
    * Get the current schema version of the Realm at the given path.
