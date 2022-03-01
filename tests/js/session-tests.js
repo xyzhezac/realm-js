@@ -1306,6 +1306,10 @@ module.exports = {
   testRealmConversionNonSyncToSync: async function () {
     const appConfig = AppConfig.integrationAppConfig;
     let app = new Realm.App(appConfig);
+    Realm.App.Sync.setLogLevel(app, "debug");
+    Realm.App.Sync.setLogger(app, (loglevel, msg) => {
+      console.log(`*** Log:  [${loglevel}]  ${msg}`);
+    });
     let credentials = await Utils.getRegisteredEmailPassCredentials(app); //anonymous();
     let credentials2 = await Utils.getRegisteredEmailPassCredentials(app); //anonymous();
     let user = await app.logIn(credentials);
@@ -1434,6 +1438,8 @@ module.exports = {
     });
     realmSynced.close();
 
+    await user.logOut();
+
     let testNo = 1;
     for (const source of sourceLocation) {
       for (const destination of destinationLocation) {
@@ -1464,9 +1470,16 @@ module.exports = {
             //   testNo++;
             //   continue;
             // }
-            if (testNo < 13) {
+            if (testNo != 14 || testNo == 13) {
               testNo++;
               continue;
+            }
+
+            if (source == "synced") {
+              configSrc.sync.user = await app.logIn(credentials);
+            }
+            if (destination == "synced") {
+              configDst.sync.user = source == "synced" ? configSrc.sync.user : await app.logIn(credentials2);
             }
 
             console.log(`\nTest ${testNo})  ${source}, ${srcEncryption}  -> ${destination}, ${dstEncryption}...\n`);
@@ -1487,12 +1500,16 @@ module.exports = {
             }
             realmSrc.writeCopyTo(configDst);
             realmSrc.close();
-            await user.logOut();
+            if (source == "synced") {
+              //              await user.logOut();
+            }
 
-            console.log(`User info:  ${user.id} - ${user.isLoggedIn}`);
+            //            console.log(`User info:  ${user.id} - ${user.isLoggedIn}`);
 
-            const user2 = await app.logIn(credentials2);
-            configDst.sync.user = user2;
+            if (destination == "synced") {
+              //              const user2 = await app.logIn(credentials2);
+              //             configDst.sync.user = user2;
+            }
             const realmDst = await Realm.open(configDst);
             if (destination == "synced") {
               TestCase.assertDefined(realmDst.syncSession);
@@ -1503,13 +1520,17 @@ module.exports = {
               //   console.log(`Upload progress:  ${t1} ${t2}`);
               // });
 
-              console.log("1");
               await realmDst.syncSession.downloadAllServerChanges();
-              console.log("2");
               await realmDst.syncSession.uploadAllLocalChanges();
-              console.log("3");
             }
             realmDst.close();
+
+            if (source == "synced") {
+              await configSrc.sync.user.logOut();
+            }
+            if (destination == "synced") {
+              await configDst.sync.user.logOut();
+            }
             Realm.deleteFile(configDst);
 
             testNo++;
@@ -1520,14 +1541,14 @@ module.exports = {
 
     // configLocalCopy.path = `${realmLocal.path}.copy.realm`;
 
-    // /*  
+    // /*
     //     Test 1:  invoke `writeCopyTo` with a Realm configuration rather than
     //       explicit parameters.  Local -> local realm.
     // */
     // realmLocal.writeCopyTo(configLocalCopy);
     // const realmLocalCopy = await Realm.open(configLocalCopy);
 
-    // /*  
+    // /*
     //     Test 2:  invoke `writeCopyTo` with a Realm configuration rather than
     //       explicit parameters.  Local -> synced realm.
     // */
@@ -1550,9 +1571,7 @@ module.exports = {
     // await realmSynced.syncSession.downloadAllServerChanges();
     // realmSynced.close();
 
-    
-
-    // /*  
+    // /*
     //     Test 3:  invoke `writeCopyTo` with a Realm configuration rather than
     //       explicit parameters.  Local -> encrypted synced realm.
     // */

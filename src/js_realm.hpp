@@ -1567,6 +1567,7 @@ void RealmClass<T>::writeCopyTo(ContextType ctx, ObjectType this_object, Argumen
             binary_encryption_key = std::move(BinaryData(config.encryption_key.data(), config.encryption_key.size()));
         }
         realm->write_copy(config.path, binary_encryption_key);
+//        realm->export_to(config);
         return;
     }
 
