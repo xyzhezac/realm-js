@@ -22,6 +22,7 @@
 
 #import <React/RCTBridge+Private.h>
 #import <React/RCTJavaScriptExecutor.h>
+//#include <cxxreact/JSExecutor.h>
 
 #import <objc/runtime.h>
 #import <arpa/inet.h>
@@ -335,7 +336,8 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
                 };
                 return static_cast<RealmJSCRuntime*>(bridge.runtime)->ctx_;
             }, [=]() {
-                [self sendDummyEvent];
+                [bridge flush];
+                //[self sendDummyEvent];
             });
         } queue:RCTJSThread];
     } else { // React Native 0.44 and older
