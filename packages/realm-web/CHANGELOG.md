@@ -5,6 +5,21 @@
 * None
 
 ### Enhancements
+* None
+
+### Fixed
+* None
+
+### Internal
+* None
+
+1.7.0 Release notes (2022-02-14)
+=============================================================
+
+### Breaking Changes
+* None
+
+### Enhancements
 * Added `Realm.App#deleteUser()` to delete a sync user from a MongoDB Realm app. ([#4006](https://github.com/realm/realm-js/issues/4006))
 
 ### Fixed
