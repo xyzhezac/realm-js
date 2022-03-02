@@ -22,7 +22,6 @@
 
 #import <React/RCTBridge+Private.h>
 #import <React/RCTJavaScriptExecutor.h>
-//#include <cxxreact/JSExecutor.h>
 #include <ReactCommon/CallInvoker.h>
 
 #import <objc/runtime.h>
@@ -81,8 +80,8 @@ extern "C" JSGlobalContextRef RealmReactGetJSGlobalContextForExecutor(id executo
     return [rctJSContext context].JSGlobalContextRef;
 }
 
-// @interface RealmReact () <RCTBridgeModule>
-// @end
+@interface RealmReact () <RCTBridgeModule>
+@end
 
 @implementation RealmReact {
     NSMutableDictionary *_eventHandlers;
@@ -153,15 +152,6 @@ RCT_REMAP_METHOD(emit, emitEvent:(NSString *)eventName withObject:(id)object) {
     for (RealmReactEventHandler handler in [_eventHandlers[eventName] copy]) {
         handler(object);
     }
-}
-
-- (NSArray<NSString *> *)supportedEvents
-{
-  return @[@"RealmDummy"];
-}
-
-- (void)sendDummyEvent {
-    [self sendEventWithName:@"RealmDummy" body:@{}];
 }
 
 #if DEBUG
@@ -286,7 +276,7 @@ RCT_REMAP_METHOD(emit, emitEvent:(NSString *)eventName withObject:(id)object) {
 
 typedef JSGlobalContextRef (^JSContextRefExtractor)();
 
-void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::function<void()> sendDummyEvent) {
+void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::function<void()> flushUiQueue) {
     // Make sure the previous JS thread is completely finished before continuing.
     static __weak NSThread *s_currentJSThread;
     while (s_currentJSThread && !s_currentJSThread.finished) {
@@ -294,7 +284,7 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
     }
     s_currentJSThread = [NSThread currentThread];
 
-    RJSInitializeInContext(jsContextExtractor(), sendDummyEvent);
+    RJSInitializeInContext(jsContextExtractor(), flushUiQueue);
 }
 
 - (void)setBridge:(RCTBridge *)bridge {
@@ -338,9 +328,11 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
                 };
                 return static_cast<RealmJSCRuntime*>(bridge.runtime)->ctx_;
             }, [=]() {
+                // This calls into JSIExecutor::flush() inside React Native to flush any pending UI
+                // updates after we have called into JS from C++
+                //
+                // TODO add a bit more info
                 [bridge jsCallInvoker]->invokeAsync([](){});
-                // [bridge flush];
-                //[self sendDummyEvent];
             });
         } queue:RCTJSThread];
     } else { // React Native 0.44 and older
@@ -357,7 +349,9 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
 
             _initializeOnJSThread(^ {
                 return RealmReactGetJSGlobalContextForExecutor(executor, true);
-            }, [&]() { [self sendDummyEvent]; });
+            }, [&]() {
+                // jsCallInvoker does not exist on older RN
+            });
         }];
     }
 }
