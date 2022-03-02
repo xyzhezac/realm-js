@@ -336,7 +336,8 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
                 };
                 return static_cast<RealmJSCRuntime*>(bridge.runtime)->ctx_;
             }, [=]() {
-                [bridge flush];
+                [bridge _reactInstance];
+                // [bridge flush];
                 //[self sendDummyEvent];
             });
         } queue:RCTJSThread];
