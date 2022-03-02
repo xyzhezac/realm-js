@@ -23,6 +23,7 @@
 #import <React/RCTBridge+Private.h>
 #import <React/RCTJavaScriptExecutor.h>
 //#include <cxxreact/JSExecutor.h>
+#include <ReactCommon/CallInvoker.h>
 
 #import <objc/runtime.h>
 #import <arpa/inet.h>
@@ -52,6 +53,7 @@ using namespace realm::rpc;
 @interface RCTBridge (Realm_RCTCxxBridge)
 - (JSGlobalContextRef)jsContextRef;
 - (void *)runtime;
+- (std::shared_ptr<facebook::react::CallInvoker>)jsCallInvoker;
 @end
 
 extern "C" JSGlobalContextRef RealmReactGetJSGlobalContextForExecutor(id executor, bool create) {
@@ -336,7 +338,7 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
                 };
                 return static_cast<RealmJSCRuntime*>(bridge.runtime)->ctx_;
             }, [=]() {
-                [bridge _reactInstance];
+                [bridge jsCallInvoker]->invokeAsync([](){});
                 // [bridge flush];
                 //[self sendDummyEvent];
             });
