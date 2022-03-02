@@ -1303,18 +1303,12 @@ module.exports = {
      Note:  conversion tests from the `testWriteCopyTo.*` tests should be moved
      here when we clean up the test suite
   */
-  testRealmConversionNonSyncToSync: async function () {
+  testRealmConversions: async function () {
     const appConfig = AppConfig.integrationAppConfig;
     let app = new Realm.App(appConfig);
-    Realm.App.Sync.setLogLevel(app, "debug");
-    Realm.App.Sync.setLogger(app, (loglevel, msg) => {
-      console.log(`*** Log:  [${loglevel}]  ${msg}`);
-    });
     let credentials = await Utils.getRegisteredEmailPassCredentials(app); //anonymous();
     let credentials2 = await Utils.getRegisteredEmailPassCredentials(app); //anonymous();
     let user = await app.logIn(credentials);
-
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 9000000;
 
     /*
       Tests matrix:
@@ -1466,15 +1460,6 @@ module.exports = {
                 : configSyncEnc,
             );
 
-            // if (testNo == 9 || testNo == 10 || testNo == 11 || testNo == 12) {
-            //   testNo++;
-            //   continue;
-            // }
-            if (testNo != 14 || testNo == 13) {
-              testNo++;
-              continue;
-            }
-
             if (source == "synced") {
               configSrc.sync.user = await app.logIn(credentials);
             }
@@ -1500,26 +1485,10 @@ module.exports = {
             }
             realmSrc.writeCopyTo(configDst);
             realmSrc.close();
-            if (source == "synced") {
-              //              await user.logOut();
-            }
 
-            //            console.log(`User info:  ${user.id} - ${user.isLoggedIn}`);
-
-            if (destination == "synced") {
-              //              const user2 = await app.logIn(credentials2);
-              //             configDst.sync.user = user2;
-            }
             const realmDst = await Realm.open(configDst);
             if (destination == "synced") {
               TestCase.assertDefined(realmDst.syncSession);
-              // realmDst.syncSession.addProgressNotification("download", "forCurrentlyOutstandingWork", (t1, t2) => {
-              //   console.log(`Download progress:  ${t1} ${t2}`);
-              // });
-              // realmDst.syncSession.addProgressNotification("upload", "forCurrentlyOutstandingWork", (t1, t2) => {
-              //   console.log(`Upload progress:  ${t1} ${t2}`);
-              // });
-
               await realmDst.syncSession.downloadAllServerChanges();
               await realmDst.syncSession.uploadAllLocalChanges();
             }
@@ -1538,88 +1507,62 @@ module.exports = {
         }
       }
     }
+  },
 
-    // configLocalCopy.path = `${realmLocal.path}.copy.realm`;
+  /*
+    Test that all the exceptions from the C++ codebase are thrown at the 
+    right times
+  */
+  testRealmConversionFailures: async function () {
+    // simple local realm
+    const configLocal = {
+      schema: [schemas.PersonForSync, schemas.DogForSync],
+      path: "dogsLocal.realm",
+    };
 
-    // /*
-    //     Test 1:  invoke `writeCopyTo` with a Realm configuration rather than
-    //       explicit parameters.  Local -> local realm.
-    // */
-    // realmLocal.writeCopyTo(configLocalCopy);
-    // const realmLocalCopy = await Realm.open(configLocalCopy);
+    /*
+     *  Test 1:  check that `writeCopyTo` verifies parameter count and types
+     */
+    const realm = await Realm.open(configLocal);
+    TestCase.assertThrowsContaining(() => {
+      // too many arguments
+      realm.writeCopyTo("path", "encryptionKey", "invalidParameter");
+    }, "Invalid arguments: at most 2 expected, but 3 supplied.");
+    TestCase.assertThrowsContaining(() => {
+      // too few arguments
+      realm.writeCopyTo();
+    }, "`writeCopyTo` requires <output configuration> or <path, [encryptionKey]> parameters");
+    TestCase.assertThrowsContaining(() => {
+      // wrong argument type
+      realm.writeCopyTo(null);
+    }, "`config` parameter must be an object");
+    TestCase.assertThrowsContaining(() => {
+      // missing `path` property
+      realm.writeCopyTo({});
+    }, "`path` property must exist in output configuration");
+    TestCase.assertThrowsContaining(() => {
+      // wrong `path` property type
+      realm.writeCopyTo({ path: 12345 });
+    }, "`path` property must be a string");
+    TestCase.assertThrowsContaining(() => {
+      // wrong `encryptionKey` property type
+      realm.writeCopyTo({ path: "outputPath", encryptionKey: "notBinary" });
+    }, "'encryptionKey' property must be a Binary value");
+    TestCase.assertThrowsContaining(() => {
+      // wrong `sync` property type
+      realm.writeCopyTo({ path: "outputPath", sync: "invalidProperty" });
+    }, "'sync' property must be an object");
 
-    // /*
-    //     Test 2:  invoke `writeCopyTo` with a Realm configuration rather than
-    //       explicit parameters.  Local -> synced realm.
-    // */
-    // const loggedInUser = await app.logIn(credentials);
-    // const configSync = {
-    //   path: `${realmLocal.path}.sync_copy.realm`,
-    //   sync: {
-    //     user: loggedInUser,
-    //     partitionValue: "foo",
-    //     _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
-    //   },
-    //   schema: [schemas.DogForSync],
-    // };
+    /*
+     *  Test 2:  check that `writeCopyTo` can only be called at the right time
+     */
+    realm.write(() => {
+      TestCase.assertThrowsContaining(() => {
+        realm.writeCopyTo({ path: "outputPath", sync: "invalidProperty" });
+      }, "Can only convert Realms outside a transaction");
+    });
 
-    // // create a copy of our realm that now has sync enabled
-    // realmLocal.writeCopyTo(configSync);
-    // const realmSynced = await Realm.open(configSync);
-    // TestCase.assertDefined(realmSynced.syncSession);
-    // await realmSynced.syncSession.uploadAllLocalChanges();
-    // await realmSynced.syncSession.downloadAllServerChanges();
-    // realmSynced.close();
-
-    // /*
-    //     Test 3:  invoke `writeCopyTo` with a Realm configuration rather than
-    //       explicit parameters.  Local -> encrypted synced realm.
-    // */
-    // var encryptionKey = new Int8Array(64);
-    // for (let i = 0; i < 64; i++) {
-    //   encryptionKey[i] = 1;
-    // }
-    // const configSyncEnc = {
-    //   path: `${realmLocal.path}.sync_enc_copy.realm`,
-    //   sync: {
-    //     user: loggedInUser,
-    //     partitionValue: "foo",
-    //     _sessionStopPolicy: "immediately", // Make it safe to delete files after realm.close()
-    //   },
-    //   encryptionKey: encryptionKey,
-    //   schema: [schemas.DogForSync],
-    // };
-
-    // // create a copy of our realm that now has sync enabled and is encrypted
-    // realmLocal.writeCopyTo(configSyncEnc);
-    // let realmSyncedEncrypted = await Realm.open(configSyncEnc);
-    // TestCase.assertDefined(realmSyncedEncrypted.syncSession);
-    // await realmSyncedEncrypted.syncSession.uploadAllLocalChanges();
-    // await realmSyncedEncrypted.syncSession.downloadAllServerChanges();
-    // realmSyncedEncrypted.close();
-
-    // // test that we can open the new realm copy with the existing config
-    // realmSyncedEncrypted = await Realm.open(configSyncEnc);
-    // realmSyncedEncrypted.close();
-
-    // // test that opening the realm fails if the encryption key is not
-    // // a binary value
-    // configSyncEnc.encryptionKey = 12345;
-    // TestCase.assertThrowsAsyncContaining(async () => {
-    //   realmSyncedEncrypted = await Realm.open(configSyncEnc);
-    // }, "encryptionKey must be of type 'binary'");
-    // realmSyncedEncrypted.close();
-
-    // // test that opening the realm fails if the encryption key is not
-    // // present
-    // delete configSyncEnc.encryptionKey;
-    // TestCase.assertThrowsAsyncContaining(async () => {
-    //   realmSyncedEncrypted = await Realm.open(configSyncEnc);
-    // }, "Unable to open a realm at path");
-    // realmSyncedEncrypted.close();
-
-    // realmLocalCopy.close();
-    // realmLocal.close();
+    realm.close();
   },
 
   /*
