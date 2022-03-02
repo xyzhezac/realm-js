@@ -85,6 +85,7 @@ extern "C" JSGlobalContextRef RealmReactGetJSGlobalContextForExecutor(id executo
 
 @implementation RealmReact {
     NSMutableDictionary *_eventHandlers;
+    bool waitingForFlush;
 
 #if DEBUG
     GCDWebServer *_webServer;
@@ -110,6 +111,7 @@ RCT_EXPORT_MODULE(Realm)
     self = [super init];
     if (self) {
         _eventHandlers = [[NSMutableDictionary alloc] init];
+        waitingForFlush = false;
     }
     return self;
 }
@@ -312,7 +314,7 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
             if (!self || !bridge) {
                 return;
             }
-
+            
             _initializeOnJSThread(^{
                 // RN < 0.58 has a private method that returns the js context
                 if ([bridge respondsToSelector:@selector(jsContextRef)]) {
@@ -327,12 +329,18 @@ void _initializeOnJSThread(JSContextRefExtractor jsContextExtractor, std::functi
                     JSGlobalContextRef ctx_;
                 };
                 return static_cast<RealmJSCRuntime*>(bridge.runtime)->ctx_;
-            }, [=]() {
+            }, ^{
                 // This calls into JSIExecutor::flush() inside React Native to flush any pending UI
                 // updates after we have called into JS from C++
                 //
                 // TODO add a bit more info
-                [bridge jsCallInvoker]->invokeAsync([](){});
+                if (!waitingForFlush) {
+                    waitingForFlush = true;
+                    [bridge jsCallInvoker]->invokeAsync([&](){
+                        printf("flush\n");
+                        waitingForFlush = false;
+                    });
+                }
             });
         } queue:RCTJSThread];
     } else { // React Native 0.44 and older
