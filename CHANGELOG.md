@@ -15,12 +15,13 @@ x.x.x Release notes (yyyy-MM-dd)
 
 ### Internal
 * Fixed analytics to read the `realm/package.json` when installing from the root of the package.
+* Changed token for analytics.
 * Fixed React Native Android integration test harness to read only one pid when starting logcat.
 * <Either mention core version or upgrade>
 * <Using Realm Core vX.Y.Z>
 * <Upgraded Realm Core from vX.Y.Z to vA.B.C>
 
-10.13.0 Release notes (2022-2-11) 
+10.13.0 Release notes (2022-2-11)
 =============================================================
 ### Enhancements
 * Added `Realm.App#deleteUser(user)` to delete a sync user from a MongoDB Realm app. ([#4006](https://github.com/realm/realm-js/issues/4006))
